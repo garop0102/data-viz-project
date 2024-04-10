@@ -1,22 +1,40 @@
 ---
 title: "Data"
 author: "Gop Arop"
-format: html
+format: 
+  html:
+    embed-resources: true
+    warning: false
+editor_options: 
+  chunk_output_type: console
 ---
 
-```{r}
-install.packages("hoopR")
-```
+-   Question of interest: How prominent has the 3 point shot been in the last 20 years? Also, how has it effected the top 10 players in each season?
 
 ```{r}
 library(hoopR)
+library(tidyverse)
+library(BasketballAnalyzeR)
 ```
 
 
 ```{r}
-hoopR::nba_leaguegamefinder()
-hoopR::nba_pbp(game_id = 0022301116)
+lebron_data <- load_nba_player_box(season = 2022) |> 
+  filter(athlete_display_name == "LeBron James") |>
+  drop_na()
 ```
+
+```{r}
+data <- tibble(nba_leaguedashplayershotlocations(league_id = '00', season = year_to_season(most_recent_nba_season() - 1))) 
+
+shot_data <-  tibble(nba_shotchartdetail(league_id = '00', player_id = '202696', season = year_to_season(most_recent_nba_season() - 1)))
+data <- shot_data[[1]][[1]] |> mutate(LOC_X = as.numeric(LOC_X), LOC_Y = as.numeric(LOC_Y))
+```
+
+```{r}
+data <- data |> mutate(xx = LOC_X/10, y = LOC_Y/10 - 41.75)
+```
+
 
 
 
