@@ -1,0 +1,23 @@
+---
+title: "Data"
+author: "Gop Arop"
+format: html
+---
+
+```{r}
+install.packages("hoopR")
+```
+
+```{r}
+library(hoopR)
+```
+
+
+```{r}
+hoopR::nba_leaguegamefinder()
+hoopR::nba_pbp(game_id = 0022301116)
+```
+
+
+
+
