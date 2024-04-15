@@ -17,24 +17,24 @@ library(tidyverse)
 library(BasketballAnalyzeR)
 ```
 
-
 ```{r}
-lebron_data <- load_nba_player_box(season = 2022) |> 
-  filter(athlete_display_name == "LeBron James") |>
-  drop_na()
+data <- tibble(nba_leaguedashplayershotlocations(league_id = '00', season = "2023-24")) 
+
+shot_data <-  tibble(nba_shotchartdetail(league_id = '00', player_id = '202696', season = "2023-24"))
+
+data <- shot_data[[1]][[1]] |> 
+  mutate(LOC_X = as.numeric(LOC_X), LOC_Y = as.numeric(LOC_Y), xx = LOC_X/10, yy = LOC_Y/10 - 41.75) |> 
+  rename(shot_distance = SHOT_DISTANCE, original_x = LOC_X, original_y = LOC_Y, converted_y = yy, converted_x = xx)
 ```
 
-```{r}
-data <- tibble(nba_leaguedashplayershotlocations(league_id = '00', season = year_to_season(most_recent_nba_season() - 1))) 
-
-shot_data <-  tibble(nba_shotchartdetail(league_id = '00', player_id = '202696', season = year_to_season(most_recent_nba_season() - 1)))
-data <- shot_data[[1]][[1]] |> mutate(LOC_X = as.numeric(LOC_X), LOC_Y = as.numeric(LOC_Y))
-```
 
 ```{r}
-data <- data |> mutate(xx = LOC_X/10, y = LOC_Y/10 - 41.75)
-```
+## Static Plot for Nikola Vucevic - 2022-23 Season
 
+p <- ggplot(data = data, aes(x = converted_x,y = converted_y)) + geom_point() + coord_fixed() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank())
+
+drawNBAcourt(p)
+```
 
 
 
