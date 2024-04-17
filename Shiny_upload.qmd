@@ -19,16 +19,26 @@ library(glue)
 seasons_choice <- paste0(substr(seq(2023, 2000), 1, 4), "-", substr(seq(2024, 2001), 3, 4))
 ```
 
-
 ```{r}
-
 ui <- fluidPage(
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("player_sel", label = "Select a Player", choices = NULL),
-      selectInput("season_sel", label = "Select a Season", choices = seasons_choice)
-  ),
-  mainPanel(plotOutput("shot_chart", height = "580px")))
+  tabsetPanel(
+    tabPanel("Shot Chart", fluid = TRUE,
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput("player_sel", label = "Select a Player", choices = NULL),
+                 selectInput("season_sel", label = "Select a Season", choices = seasons_choice)
+               ),
+               mainPanel(plotOutput("shot_chart", height = "580px"), tableOutput("sum_stats"))
+             )
+    ),
+    tabPanel("Quad Plot", fluid = TRUE, 
+             sidebarLayout(
+               sidebarPanel(
+                 radioButtons("xvar_sel", label = "Select a Variable for X-Axis", choices = c(2,3)),
+                 radioButtons("yvar_sel", label = "Select a Variable for Y-Axis", choices = c(1,2))
+               ), 
+               mainPanel()))
+  )
 )
 
 server <- function(input, output, session) {
@@ -52,7 +62,7 @@ server <- function(input, output, session) {
       arrange(desc(PTS)) |>
       slice(1:20)
     
-    player_choices <- players_top20 |> distinct(PLAYER_ID) |> pull(PLAYER_ID)
+    player_choices <- players_top20 |> distinct(PLAYER_ID) |> pull(PLAYER_ID) 
     
     updateSelectInput(inputId = "player_sel", choices = player_choices)
   })
@@ -64,6 +74,15 @@ server <- function(input, output, session) {
   drawNBAcourt(chart, full = TRUE)
     
   })
+  
+  output$sum_stats <- renderTable({
+    data_react() |> 
+      mutate(ind_2s = if_else(SHOT_TYPE == "2PT Field Goal", 1, 0),
+             ind_3s = if_else(SHOT_TYPE == "3PT Field Goal", 1, 0)) |>
+      summarise("Proportion of 2s" = sum(ind_2s) / n(), "Proportion of 3s" = sum(ind_3s) / n())
+  })
+  
+
 }
 
 shinyApp(ui, server)
