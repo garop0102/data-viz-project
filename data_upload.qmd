@@ -17,6 +17,7 @@ library(tidyverse)
 library(BasketballAnalyzeR)
 ```
 
+## Shot Chart.
 ```{r}
 shot_data <-  tibble(nba_shotchartdetail(league_id = '00', player_id = '2544', season = "2023-24"))
 
@@ -46,13 +47,52 @@ players <- players |>
   slice(1:20)
 ```
 
+
+## Quadrant Plot.
 ```{r}
-ggplot(players, aes(x=as.numeric(FGA), y=PTS)) +
+library(plotly)
+players <- players |> mutate(FG3A = as.numeric(FG3A), FGA = as.numeric(FGA))
+mean_y <- mean(players$FG3A)
+mean_x <- mean(players$FGA)
+
+quad_plot <- ggplot(players, aes(x=FGA, y=FG3A, label = PLAYER)) +
   geom_point() +
-  lims(x=c(1,10),y=c(1,10)) +
   theme_minimal() +
-  coord_fixed() +  
-  geom_vline(xintercept = 5) + geom_hline(yintercept = 5) 
+  geom_vline(xintercept = mean_x) + geom_hline(yintercept = mean_y) 
+
+ggplotly(quad_plot, tooltip = "label")
 ```
 
+
+## Linear Model. 
+
+```{r}
+teams <- nba_teams()
+
+team_stats <- nba_leaguedashteamstats(league_id = "00", season = "2023-24", team_id = "1610612737")
+
+hawks_stats <- team_stats[[1]]
+```
+
+
+```{r}
+team_ids <- teams |>
+  distinct(team_id) |>
+  pull(team_id)
+
+seasons_choice <- paste0(substr(seq(2023, 2004), 1, 4), "-", substr(seq(2024, 2005), 3, 4)) |> as.factor()
+
+for(i in seasons_choice){
+  empty_vec <- double()
+    
+  empty_vec <- nba_leaguedashteamstats(league_id = "00", season = szn, team_id = "1610612737")
+}
+
+```
+
+
+```{r}
+library(broom)
+threepoint_mod <- lm()
+```
 

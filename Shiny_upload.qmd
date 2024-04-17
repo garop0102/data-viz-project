@@ -79,7 +79,7 @@ server <- function(input, output, session) {
     data_react() |> 
       mutate(ind_2s = if_else(SHOT_TYPE == "2PT Field Goal", 1, 0),
              ind_3s = if_else(SHOT_TYPE == "3PT Field Goal", 1, 0)) |>
-      summarise("Proportion of 2s" = sum(ind_2s) / n(), "Proportion of 3s" = sum(ind_3s) / n())
+      summarise("Proportion of Makes 2s" = sum(ind_2s) / n(), "Proportion of Makes 3s" = sum(ind_3s) / n())
   })
   
 
