@@ -17,7 +17,7 @@ library(glue)
 ```
 
 ```{r}
-seasons_choice <- paste0(substr(seq(2023, 2000), 1, 4), "-", substr(seq(2024, 2001), 3, 4))
+seasons_choice <- paste0(substr(seq(2023, 1999), 1, 4), "-", substr(seq(2024, 2000), 3, 4))
 
 players <-  nba_leagueleaders(season = "2022-23", stat_category = "PTS", per_mode = "PerGame")
 
@@ -48,7 +48,7 @@ ui <- fluidPage(
                sidebarPanel(
                  selectInput("xvar_sel", label = "Select a Variable for X-Axis", choices = var_choices),
                  selectInput("yvar_sel", label = "Select a Variable for Y-Axis", choices = var_choices),
-                 selectInput("season_sel", label = "Select a Season", choices = seasons_choice)
+                 selectInput("season_select", label = "Select a Season", choices = seasons_choice)
                ), 
                mainPanel(plotlyOutput("quad_plot"))))
   )
@@ -65,7 +65,7 @@ server <- function(input, output, session) {
   })
   
   players_react <- reactive({
-    players_original <-  nba_leagueleaders(season = input$season_sel, stat_category = "PTS", per_mode = "PerGame")
+    players_original <-  nba_leagueleaders(season = input$season_select, stat_category = "PTS", per_mode = "PerGame")
     
     players_leaders <- players_original[["LeagueLeaders"]] |>
       mutate(PTS = as.numeric(PTS)) |> select(-(1:2), -(4:7), -(17:23))
@@ -90,16 +90,20 @@ server <- function(input, output, session) {
       arrange(desc(PTS)) |>
       slice(1:20)
     
-    player_choices <- players_top20 |> distinct(PLAYER_ID) |> pull(PLAYER_ID) 
+    player_choices <- players_top20 |> distinct(PLAYER_ID) |> pull(PLAYER_ID)
     
     updateSelectInput(inputId = "player_sel", choices = player_choices)
   })
   
+  observeEvent(input$player_sel, {
+    newchoices <- reactiveValues("1629029" == "Luka Doncic")
+  })
+  
   
   output$shot_chart <- renderPlot({
-    chart <- ggplot(data = data_react(), aes(x = converted_x,y = converted_y)) + geom_point() + coord_fixed() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) + labs(title = glue("Shot Chart for ", input$player_sel))
+    chart <- ggplot(data = data_react(), aes(x = converted_x,y = converted_y)) + geom_point() + coord_fixed() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) + labs(title = glue("Shot Chart of Made Field Goals for ", input$player_sel))
     
-    drawNBAcourt(chart, full = TRUE)
+    drawNBAcourt(chart, full = FALSE)
     
   })
   

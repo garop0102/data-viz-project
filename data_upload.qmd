@@ -9,7 +9,7 @@ editor_options:
   chunk_output_type: console
 ---
 
--   Question of interest: How prominent has the 3 point shot been in the last 20 years? Also, how has it effected the top 20 players in each season?
+-   Question of interest: How prominent has the 3 point shot been in the last 24 years? Also, how has it effected the top 20 players in each season?
 
 ```{r}
 library(hoopR)
@@ -99,4 +99,32 @@ for(i in seasons_choice){
 library(broom)
 threepoint_mod <- lm()
 ```
+
+```{r}
+values <- reactiveValues()
+
+values$a <- 3
+
+values[['b']] <- 4
+
+values$a
+```
+
+```{r}
+myurl <- "https://cdn.nba.com/headshots/nba/latest/260x190/2544.png"
+z <- tempfile()
+download.file(myurl,z,mode="wb")
+pic <- readPNG(z)
+
+myImage <- pic
+myImage <- grid::rasterGrob(myImage, interpolate = TRUE)
+library(ggplot2)
+ggplot() + 
+    geom_blank() + 
+    annotation_custom(myImage, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf)
+```
+
+
+
+
 
