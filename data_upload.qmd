@@ -45,6 +45,8 @@ players <- players[["LeagueLeaders"]] |>
 players <- players |>
   arrange(desc(PTS)) |>
   slice(1:20)
+
+names(players)
 ```
 
 
@@ -84,9 +86,11 @@ seasons_choice <- paste0(substr(seq(2023, 2004), 1, 4), "-", substr(seq(2024, 20
 
 for(i in seasons_choice){
   empty_vec <- double()
-    
-  empty_vec <- nba_leaguedashteamstats(league_id = "00", season = szn, team_id = "1610612737")
+  
+  empty_vec[i] <- nba_leaguedashteamstats(league_id = "00", season = i, team_id = "1610612737")
 }
+
+
 
 ```
 

@@ -11,12 +11,24 @@ editor_options:
 
 ```{r}
 library(tidyverse)
+library(plotly)
 library(shiny)
 library(glue)
 ```
 
 ```{r}
 seasons_choice <- paste0(substr(seq(2023, 2000), 1, 4), "-", substr(seq(2024, 2001), 3, 4))
+
+players <-  nba_leagueleaders(season = "2022-23", stat_category = "PTS", per_mode = "PerGame")
+
+players <- players[["LeagueLeaders"]] |>
+  mutate(PTS = as.numeric(PTS)) |> select(-(1:2), -(4:7), -(17:23))
+
+players <- players |>
+  arrange(desc(PTS)) |>
+  slice(1:20)  |> 
+  select(-`PLAYER`)
+var_choices <- names(players) 
 ```
 
 ```{r}
@@ -34,10 +46,11 @@ ui <- fluidPage(
     tabPanel("Quad Plot", fluid = TRUE, 
              sidebarLayout(
                sidebarPanel(
-                 radioButtons("xvar_sel", label = "Select a Variable for X-Axis", choices = c(2,3)),
-                 radioButtons("yvar_sel", label = "Select a Variable for Y-Axis", choices = c(1,2))
+                 selectInput("xvar_sel", label = "Select a Variable for X-Axis", choices = var_choices),
+                 selectInput("yvar_sel", label = "Select a Variable for Y-Axis", choices = var_choices),
+                 selectInput("season_sel", label = "Select a Season", choices = seasons_choice)
                ), 
-               mainPanel()))
+               mainPanel(plotlyOutput("quad_plot"))))
   )
 )
 
@@ -45,12 +58,27 @@ server <- function(input, output, session) {
   
   data_react <- reactive({
     shot_data <-  tibble(nba_shotchartdetail(league_id = '00', player_id = input$player_sel, season = input$season_sel))
-    
     data <- shot_data[[1]][[1]] |> 
       mutate(LOC_X = as.numeric(LOC_X), LOC_Y = as.numeric(LOC_Y), xx = LOC_X/10, yy = LOC_Y/10 - 41.75) |> 
       rename(shot_distance = SHOT_DISTANCE, original_x = LOC_X, original_y = LOC_Y, converted_y = yy, converted_x = xx)  |> 
-  filter(EVENT_TYPE == "Made Shot")
+      filter(EVENT_TYPE == "Made Shot")
   })
+  
+  players_react <- reactive({
+    players_original <-  nba_leagueleaders(season = input$season_sel, stat_category = "PTS", per_mode = "PerGame")
+    
+    players_leaders <- players_original[["LeagueLeaders"]] |>
+      mutate(PTS = as.numeric(PTS)) |> select(-(1:2), -(4:7), -(17:23))
+    
+    players_top20 <- players_leaders |>
+      arrange(desc(PTS)) |>
+      slice(1:20)
+    
+      players <- players_top20 |>
+      mutate_at(vars(-PLAYER, -PTS), as.numeric)
+
+  })
+  
   
   observeEvent(input$season_sel, {
     players_df <-  nba_leagueleaders(season = input$season_sel, stat_category = "PTS", per_mode = "PerGame")
@@ -69,10 +97,22 @@ server <- function(input, output, session) {
   
   
   output$shot_chart <- renderPlot({
-    chart <- ggplot(data = data_react(), aes(x = converted_x,y = converted_y)) + geom_point() + coord_fixed() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank())
+    chart <- ggplot(data = data_react(), aes(x = converted_x,y = converted_y)) + geom_point() + coord_fixed() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) + labs(title = glue("Shot Chart for ", input$player_sel))
     
-  drawNBAcourt(chart, full = TRUE)
+    drawNBAcourt(chart, full = TRUE)
     
+  })
+  
+  output$quad_plot <- renderPlotly({
+    mean_x <- mean(players_react()[[input$xvar_sel]])
+    mean_y <- mean(players_react()[[input$yvar_sel]])
+    
+    q_plot <- ggplot(players_react(), aes(x=.data[[input$xvar_sel]], y=.data[[input$yvar_sel]], label = PLAYER)) +
+      geom_point() +
+      theme_minimal() +
+      geom_vline(xintercept = mean_x) + geom_hline(yintercept = mean_y) 
+    
+    ggplotly(q_plot, tooltip = "label")
   })
   
   output$sum_stats <- renderTable({
@@ -82,7 +122,7 @@ server <- function(input, output, session) {
       summarise("Proportion of Makes 2s" = sum(ind_2s) / n(), "Proportion of Makes 3s" = sum(ind_3s) / n())
   })
   
-
+  
 }
 
 shinyApp(ui, server)
