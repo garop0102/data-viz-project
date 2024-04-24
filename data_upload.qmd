@@ -85,33 +85,23 @@ team_ids <- teams |>
 
 seasons_choice <- paste0(substr(seq(2023, 2004), 1, 4), "-", substr(seq(2024, 2005), 3, 4)) |> as.factor()
 
-for(i in seasons_choice){
-  empty_vec <- double()
+```
+
+```{r}
+all_stats <- tibble()
+
+for(season in seasons_choice){
+  team_stats <- nba_leaguedashteamstats(season = season, team_id = NULL)
   
-  empty_vec[i] <- nba_leaguedashteamstats(league_id = "00", season = i, team_id = "1610612737")
+  
+  all_stats <- bind_rows(all_stats, team_stats)
 }
 ```
+
 
 ```{r}
 library(broom)
 threepoint_mod <- lm()
 ```
-
-```{r}
-values <- reactiveValues()
-
-values$a <- 3
-
-values[['b']] <- 4
-
-values$a
-```
-
-```{r}
-
-```
-
-
-
 
 
