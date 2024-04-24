@@ -43,7 +43,7 @@ ui <- fluidPage(
                mainPanel(plotOutput("shot_chart", height = "580px"), tableOutput("sum_stats"))
              )
     ),
-    tabPanel("Quad Plot", fluid = TRUE, 
+    tabPanel("Quadrant Plot", fluid = TRUE, 
              sidebarLayout(
                sidebarPanel(
                  selectInput("xvar_sel", label = "Select a Variable for X-Axis", choices = var_choices),
@@ -94,11 +94,6 @@ server <- function(input, output, session) {
     
     updateSelectInput(inputId = "player_sel", choices = player_choices)
   })
-  
-  observeEvent(input$player_sel, {
-    newchoices <- reactiveValues("1629029" == "Luka Doncic")
-  })
-  
   
   output$shot_chart <- renderPlot({
     chart <- ggplot(data = data_react(), aes(x = converted_x,y = converted_y)) + geom_point() + coord_fixed() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) + labs(title = glue("Shot Chart of Made Field Goals for ", input$player_sel))

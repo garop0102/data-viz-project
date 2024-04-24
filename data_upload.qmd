@@ -27,7 +27,6 @@ data <- shot_data[[1]][[1]] |>
   filter(EVENT_TYPE == "Made Shot")
 ```
 
-
 ```{r}
 ## Static Plot for LeBron James - 2023-24 Season
 
@@ -53,18 +52,21 @@ names(players)
 ## Quadrant Plot.
 ```{r}
 library(plotly)
-players <- players |> mutate(FG3A = as.numeric(FG3A), FGA = as.numeric(FGA))
+library(glue)
+players <- players |> mutate(FG3A = as.numeric(FG3A), FGA = as.numeric(FGA)) |> mutate(image = sprintf("https://cdn.nba.com/headshots/nba/latest/260x190/%s.png", PLAYER_ID))
 mean_y <- mean(players$FG3A)
 mean_x <- mean(players$FGA)
 
 quad_plot <- ggplot(players, aes(x=FGA, y=FG3A, label = PLAYER)) +
-  geom_point() +
+  geom_point() + 
+  geom_image(aes(image = image), size = 0.09) +
   theme_minimal() +
   geom_vline(xintercept = mean_x) + geom_hline(yintercept = mean_y) 
 
+quad_plot
+
 ggplotly(quad_plot, tooltip = "label")
 ```
-
 
 ## Linear Model. 
 
@@ -75,7 +77,6 @@ team_stats <- nba_leaguedashteamstats(league_id = "00", season = "2023-24", team
 
 hawks_stats <- team_stats[[1]]
 ```
-
 
 ```{r}
 team_ids <- teams |>
@@ -89,11 +90,7 @@ for(i in seasons_choice){
   
   empty_vec[i] <- nba_leaguedashteamstats(league_id = "00", season = i, team_id = "1610612737")
 }
-
-
-
 ```
-
 
 ```{r}
 library(broom)
@@ -111,17 +108,7 @@ values$a
 ```
 
 ```{r}
-myurl <- "https://cdn.nba.com/headshots/nba/latest/260x190/2544.png"
-z <- tempfile()
-download.file(myurl,z,mode="wb")
-pic <- readPNG(z)
 
-myImage <- pic
-myImage <- grid::rasterGrob(myImage, interpolate = TRUE)
-library(ggplot2)
-ggplot() + 
-    geom_blank() + 
-    annotation_custom(myImage, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf)
 ```
 
 
