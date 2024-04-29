@@ -14,6 +14,7 @@ editor_options:
 ```{r}
 library(hoopR)
 library(tidyverse)
+library(rvest)
 library(BasketballAnalyzeR)
 ```
 
@@ -88,20 +89,70 @@ seasons_choice <- paste0(substr(seq(2023, 2004), 1, 4), "-", substr(seq(2024, 20
 ```
 
 ```{r}
-all_stats <- tibble()
+team_totals <- tibble()
 
-for(season in seasons_choice){
-  team_stats <- nba_leaguedashteamstats(season = season, team_id = NULL)
+for (year in 2000:2010) {
+  Sys.sleep(4)
   
+  teamStats_url <- sprintf("https://www.basketball-reference.com/leagues/NBA_%s.html", year)
   
-  all_stats <- bind_rows(all_stats, team_stats)
+  team_stats <- read_html(teamStats_url) |> 
+    html_nodes("table") |>
+    html_table() 
+  
+  team_stats_current <- team_stats[[6]]
+  
+  team_stats_current$SEASON <- year
+  
+  team_totals <- bind_rows(team_totals, team_stats_current) 
 }
+
+for (year in 2011:2015) {
+  Sys.sleep(4)
+  
+  teamStats_url <- sprintf("https://www.basketball-reference.com/leagues/NBA_%s.html", year)
+  
+  team_stats <- read_html(teamStats_url) |> 
+    html_nodes("table") |>
+    html_table() 
+  
+  team_stats_current <- team_stats[[6]]
+  
+  team_stats_current$SEASON <- year
+  
+  team_totals <- bind_rows(team_totals, team_stats_current) 
+}
+
+for (year in 2016:2024) {
+  Sys.sleep(4)
+  
+  teamStats_url <- sprintf("https://www.basketball-reference.com/leagues/NBA_%s.html", year)
+  
+  team_stats <- read_html(teamStats_url) |> 
+    html_nodes("table") |>
+    html_table() 
+  
+  team_stats_current <- team_stats[[8]]
+  
+  team_stats_current$SEASON <- year
+  
+  team_totals <- bind_rows(team_totals, team_stats_current) 
+}
+
+
+```
+
+```{r}
+team_totals <- team_totals |>
+  mutate(SEASON = as.factor(SEASON)) |>
+  filter(Team != "League Average")
 ```
 
 
 ```{r}
 library(broom)
-threepoint_mod <- lm()
+threepoint_mod <- lm(`3PA` ~ SEASON, data = team_totals)
+summary(threepoint_mod)
 ```
 
 
