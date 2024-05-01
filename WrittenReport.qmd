@@ -1,0 +1,18 @@
+---
+title: "Final Written Report"
+author: "Gop Arop"
+format: 
+  html:
+    embed-resources: true
+editor_options: 
+  chunk_output_type: console
+---
+
+## Abstract
+
+The prominence of the three-point shot in the NBA is a current hot topic in the sports world today. Many believe it takes away from fundamental aspects of the game, while other folks believe the shot is opening up more shots and opportunities. From my project, I found that from the 2012 to 2013 a sizable increase in average 3 point attempts occurred (1213.167 to 1635.567, p-value = 0). 
+
+
+## Introduction 
+
+In the making of this project, I extracted data from 3 main sources. 2 of the most influential packages I worked with were BasketballAnalyzeR and HoopR. Both these packages come from GitHub.com. The other source of data I used was BasketballReference.com, the data I used was obtained via webscraping. 

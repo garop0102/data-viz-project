@@ -32,7 +32,7 @@ data <- shot_data[[1]][[1]] |>
 ```{r}
 ## Static Plot for LeBron James - 2023-24 Season
 
-chart <- ggplot(data = data, aes(x = converted_x, y = converted_y)) + geom_point() + coord_fixed()+ theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) 
+chart <- ggplot(data = data, aes(x = converted_x, y = converted_y)) + geom_tile(aes(fill = shot_distance)) + coord_fixed()+ theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) 
 
 chart
 drawNBAcourt(chart)
@@ -89,6 +89,8 @@ team_ids <- teams |>
 seasons_choice <- paste0(substr(seq(2023, 2004), 1, 4), "-", substr(seq(2024, 2005), 3, 4)) |> as.factor()
 
 ```
+
+## Linear Model
 
 ```{r}
 team_totals <- tibble()
@@ -147,14 +149,37 @@ for (year in 2016:2024) {
 ```{r}
 team_totals <- team_totals |>
   mutate(SEASON = as.factor(SEASON)) |>
-  filter(Team != "League Average")
+  filter(Team != "League Average") |>
+  filter(SEASON == "2012" | SEASON == "2013")
 ```
 
 
 ```{r}
 library(broom)
 threepoint_mod <- lm(`3PA` ~ SEASON, data = team_totals)
-summary(threepoint_mod)
+threepoint_mod <- threepoint_mod |> tidy()
 ```
+
+```{r}
+team_mod <- team_totals |>
+  mutate(DECADE = case_when(SEASON %in%
+              c("2000","2001","2002","2003","2004","2005","2006","2007","2008","2009") ~ "2000s",
+                            SEASON %in%
+              c("2010","2011","2012","2013","2014","2015","2016","2017","2018","2019") ~ "2010s",
+                            .default = "Early 2020s")) |>
+  group_by(SEASON, DECADE) |>
+  summarise(`3PA` = mean(`3PA`))
+
+attempts_graph <- ggplot(data = team_mod, aes(x = SEASON, y = `3PA`, group = DECADE)) + geom_point() + geom_line() + facet_grid(~DECADE, scales = "free_x") + theme_light()
+
+ggplotly(attempts_graph, tooltip = "3PA")
+```
+
+
+
+
+
+
+
 
 
