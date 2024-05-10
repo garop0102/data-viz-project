@@ -4,15 +4,199 @@ author: "Gop Arop"
 format: 
   html:
     embed-resources: true
+    warning: false
 editor_options: 
   chunk_output_type: console
 ---
 
 ## Abstract
 
-The prominence of the three-point shot in the NBA is a current hot topic in the sports world today. Many believe it takes away from fundamental aspects of the game, while other folks believe the shot is opening up more shots and opportunities. From my project, I found that from the 2012 to 2013 a sizable increase in average 3 point attempts occurred (1213.167 to 1635.567, p-value = 0). 
+```{r echo=FALSE,warning=FALSE,message=FALSE}
+library(knitr)
+library(tidyverse)
+library(plotly)
+library(BasketballAnalyzeR)
+library(hoopR)
+library(glue)
+```
+
+The prominence of the three-point shot in the NBA is currently a hot topic in the sports world. When the three-point shot was first introduced in the 1979-80 NBA season, the shot was looked at, for quite a while, as a novelty shot. Coaches, players, and executives did not strategize their teams and/or game plans around the three-point shot at all. In fact, many discouraged players from shooting them at all. So what has changed? How much of a impact has the three-point shot had on the scoring the NBA today? Digging deeper into that question, I found that the percentage of shots taken and made from three point land has increase gradually over the course of the last 24 seasons. Notably, I found a significant jump in average three-point attempts by the top 20 scorers in the NBA from the 2015 season to the 2016 season (3.370 - 5.125). I also found that after the 2014-15 the players who took the highest volume of three pointers per game usually had a worse efficiency rating in comparison to players that did not exceed the average three point attempts per game statistic. This pattern is evident in seasons before 2014-15, but the boost in attempts per game after this season accentuates the pattern.
+
+## Introduction
+
+### The Data
+
+In the making of this project, I extracted data from 3 main sources. 2 of the most influential packages I worked with were BasketballAnalyzeR and HoopR. Both these packages come from GitHub.com. The other source of data I used was BasketballReference.com, the data I used was obtained via webscraping. The packages provided a vast number of functions that made accessing the data easy for me. With this, it naturally provided a great number of observations. Most of which I used to group by player or season and obtain the appropiate statistics needed to construct my visualizations. For example, one of the functions I used for obtaining data on the top 20 scorers was one called nba_leagueleaders(). This function contained the league leaders in multiple statistical categories in the NBA. To run the function the user has to input the specified season they want to investigate.
+
+#### Sample Oberservations
+
+Observations for top 6 scorers in the NBA for the 2022-23 season. I used this data set to construct a visualization of the average number of three pointer attempted by the top 20 NBA players over the last 24 seasons.
+
+```{r echo =FALSE}
+readRDS("scorers.rds") |> 
+  head() |>
+  kable()
+```
+
+Here are observations on LeBron James' shot detail for the 2023-24 season. I used this data set to construct a shot chart plot colored by shots made and missed. This shot chart was used in my shiny app.
+
+```{r echo=FALSE}
+readRDS("shot_chart_data.rds") |> 
+  head() |>
+  kable()
+```
+
+#### Variables of Interest
+
+These variables were the only ones used I used throughout my project.
+
+```{r echo=FALSE}
+readRDS("variables.rds") |> kable()
+```
+
+### Question of Interest
+
+The questions of interest explored throughout my study were; How many more three-point shots are NBA scorers taking, compared to other seasons? I also explored the question; Can the three-point shot affect other aspects of a players game, such as player efficiency rating?
+
+## Visualization 1.
+
+```{r}
+totals <- nba_leagueleaders(season = "2023-24", stat_category = "PTS", per_mode = "Totals")
+
+totals <- totals[["LeagueLeaders"]] |>
+  mutate(`FGA` = as.numeric(`FGA`), `FG3A` = as.numeric(`FG3A`)) |>
+  filter(!is.na(`FGA`), !is.na(`FG3A`))
+
+totals2 <- totals |>
+  mutate(`FG2A` = as.numeric(`FGA`) - as.numeric(`FG3A`)) |>
+  filter(!is.na(`FG2A`)) |>
+  slice(1:100) |>
+  summarise(`Average Proportion of Makes 2s for Season` = mean(`FG2A` / `FGA`),
+            `Average Proportion of Makes 3s for Season` = mean(`FG3A` / `FGA`)) |>
+  kable()
+```
+
+```{r}
+shot_data <- tibble(nba_shotchartdetail(league_id = '00', player_id = '2544',season = "2023-24"))
+
+data <- shot_data[[1]][[1]] |> 
+  mutate(LOC_X = as.numeric(LOC_X), LOC_Y = as.numeric(LOC_Y), xx = LOC_X/10, yy = LOC_Y/10 - 41.75) |> 
+  rename(shot_distance = SHOT_DISTANCE, original_x = LOC_X, original_y = LOC_Y, converted_y = yy, converted_x = xx) |>
+  mutate(shot_distance = as.numeric(shot_distance))
+```
+
+```{r}
+chart <- ggplot(data = data, aes(x = converted_x, y = converted_y, color = EVENT_TYPE)) + geom_point(alpha = 0.7, size = 2.5) + coord_fixed() + labs(title = glue("Shot Chart of Total Field Goals for {data$PLAYER_NAME}", )) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), plot.title = element_text(size = 15)) + scale_color_viridis_d()
+
+drawNBAcourt(chart)
+totals2
+```
+
+This shot chart of total field goals taken (shots) for LeBron James was obtained for the 2023-24 NBA season. From the chart, it's intuitive to hypothesize that LeBron James shoots a majority of his shots either behind the three-point arc or very close to the basket. There's a lot of white space in between the two zones.
+
+The table is to supplement the viewer with more information regarding the trend of three-point shots made compared to two point shots made. The table is for the 2023-24 NBA season. It states that 0.63 of the total shots made by the top 100 scorers are two pointers (inside the three-point arc). While, 0.37 of the total shots made are three pointers (outside the three-point arc).
+
+From interacting with my shiny app and playing around with the seasons I reached the conclusion that players nowadays are taking and making three pointers more than ever and the trend is still trending upwards. Before the 2011-12 season, the average proportion of 3 and 2 pointers made was below 0.8 for 2's. However after this point the proportion of 2's made has steadily decreased to as low as 0.63, where it sits at for the most current NBA season (2023-24). 
+
+Both the table and the shot chart are reactive in my shiny app.
+
+## Visualization 2.
+
+```{r}
+players <-  nba_leagueleaders(season = "2023-24", stat_category = "PTS", per_mode = "PerGame")
+
+players <- players[["LeagueLeaders"]] |>
+  mutate(PTS = as.numeric(PTS))
+
+players <- players |>
+  arrange(desc(PTS)) |>
+  slice(1:30)
+```
+
+```{r}
+players <- players |> mutate_at(vars(-PLAYER, -PTS), as.numeric)
+mean_y <- mean(players$FG3A)
+mean_x <- mean(players$EFF)
+
+quad_plot <- ggplot(players, aes(x=EFF, y=FG3A, label = PLAYER)) +
+  geom_point() +
+  theme_minimal() +
+  geom_vline(xintercept = mean_x) + geom_hline(yintercept = mean_y) 
+
+ggplotly(quad_plot, tooltip = "label")
+```
+
+This quadrant plot is a plot that contains data on the top 30 scorers in points per game in the NBA for the 2023-24 season. The lines at the x and y axis are drawn at the mean value of each variable represented on the axes. The line drawn on the x-axis is the average efficiency rating for those 30 players. Similarly, the line on the y-axis represents the average three pointers attempted per game for those 30 players. The plot is interactive and displays the name of the player once a cursor is hovered over the point.
+
+When shifting around the seasons in my shiny app, I found a pattern. I found that there were a lot of data points in the first quadrant. This would mean that the players that were above the average line in three pointers attempted per game were below the average line for efficiency rating in the 30 best scorers pool. Conversely, I also found that the second most data points belong in the group in the fourth quadrant. This would mean that players who were on the below the average line for three pointers attempted per game were more likely to be in the group that was above the average line for efficiency rating. Obviously, I am going off of eye test here, so it would be interesting to delve deeper into this subject and run some tests to come out with some statistical inferences that can prove or disprove my hypothesis.
+
+This plot is exhibited in the second tab of my shiny app. The app allows for the user to shift through the past 24 seasons. The app also allows the user to use different variables if they want to look at different relationships.
+
+## Visualization 3.
+
+```{r}
+seasons_choice <- paste0(substr(seq(2023, 1999), 1, 4), "-", substr(seq(2024, 2000), 3, 4)) |> as.factor()
+
+`2000's` <- paste0(substr(seq(2008, 1999), 1, 4), "-", substr(seq(2009, 2000), 3, 4))
+`2010's` <- paste0(substr(seq(2018, 2009), 1, 4), "-", substr(seq(2019, 2010), 3, 4))
+
+season_alt <- paste0(seq(2000,2024)) |>
+  as.factor()
+```
+
+```{r}
+top_scorers_df <- tibble(Player = character(),
+                            PTS = numeric(),
+                            Season = character(),
+                            stringsAsFactors = FALSE)
+
+for (season in seasons_choice) {
+  players <- nba_leagueleaders(season = season, 
+                                stat_category = "PTS", 
+                                per_mode = "PerGame")
+  
+  players <- players[["LeagueLeaders"]] |>
+    mutate(PTS = as.numeric(PTS))
+  
+  players <- players |>
+    arrange(desc(PTS)) |>
+    slice(1:30)
+  
+  top_scorers_df <- rbind(top_scorers_df, 
+                         transform(players, Season = season))
+}
+top_scorers_df <- top_scorers_df |>
+    mutate(`Season` = as.factor(`Season`),
+           `FG3A` = as.numeric(`FG3A`))
+```
+
+```{r}
+top_scorers_plot <- top_scorers_df |>
+  mutate(DECADE = case_when(Season %in% `2000's` ~ "2000s",
+                            Season %in% `2010's` ~ "2010s",
+                            .default = "Early 2020s")) |>
+  group_by(Season, DECADE) |>
+  summarise(`Average 3 Point Attempt Per Game` = mean(`FG3A`)) |>
+  bind_cols(season_alt) |>
+  rename(`Season Alt` = `...4`) |>
+  rename(Year = `Season Alt`)
+
+timeplot <- ggplot(data = top_scorers_plot, aes(x = `Year`, y = `Average 3 Point Attempt Per Game`, group = DECADE, color = DECADE, label = `Year`)) + 
+  geom_point() + 
+  geom_line() + 
+  facet_grid(~DECADE, scales = "free_x") + 
+  theme_bw() +
+  theme(legend.position = "bottom",legend.title = element_blank(), legend.background = element_rect(fill = "white", color = "black"), axis.text.x = element_blank(), axis.ticks.x = element_blank()) + labs(x = "Season") +scale_color_viridis_d()
+
+ggplotly(timeplot, tooltip = c("label", "y"))
+```
+
+In this visualization, the data was tidyed for the top 30 scorers per game for the last 24 NBA seasons. The graph visualizes the average three pointers attempted per game from those 30 players and plots the points over the course of 24 seasons. The interactivity of the plot allows the user to hover over the points and see what year and  the data point represents. 
+
+From this plot, I found that the greatest jump over the last 24 seasons, in attempted three pointers per game occurred two years in a row (2015-2016 & 2016-2017). This most likely had to do with Steph Curry's run of championships and success heaving up a high volume of three-pointers. Although the average attempts are at a record high, this current season actually produced the lowest average, for the top 30 scorers, in the last 6 years. It will be interesting to see if this decrease in three-pointers attempted becomes a trend for years to come. 
+
+## Conclusion
+
+In the future, I would like to be able to develop predictive models and run statistical tests to come up with more conclusive results. I would take the time to develop a linear model that predicts the number of three pointers attempted for teams depending on statistics such as pace and defensive efficiency. I would also consider, running tests to see if the difference between the proportion of makes that are 2's now is significantly different than the proportion in the 1999-00 season. 
 
 
-## Introduction 
-
-In the making of this project, I extracted data from 3 main sources. 2 of the most influential packages I worked with were BasketballAnalyzeR and HoopR. Both these packages come from GitHub.com. The other source of data I used was BasketballReference.com, the data I used was obtained via webscraping. 

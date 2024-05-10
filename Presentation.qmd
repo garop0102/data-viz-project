@@ -137,7 +137,32 @@ threepoint_mod
 ## Visualization 3
 
 ```{r}
+players <-  nba_leagueleaders(season = "2022-23", stat_category = "PTS", per_mode = "PerGame")
 
+players <- players[["LeagueLeaders"]] |>
+  mutate(PTS = as.numeric(PTS))
+
+players <- players |>
+  arrange(desc(PTS)) |>
+  slice(1:20)
+
+names(players)
+```
+
+
+```{r}
+library(plotly)
+library(glue)
+players <- players |> mutate(FG3A = as.numeric(FG3A), FGA = as.numeric(FGA), EFF = as.numeric(EFF))
+mean_y <- mean(players$FG3A)
+mean_x <- mean(players$EFF)
+
+quad_plot <- ggplot(players, aes(x=EFF, y=FG3A, label = PLAYER)) +
+  geom_point() + 
+  theme_minimal() +
+  geom_vline(xintercept = mean_x) + geom_hline(yintercept = mean_y) 
+
+ggplotly(quad_plot, tooltip = "label")
 ```
 
 

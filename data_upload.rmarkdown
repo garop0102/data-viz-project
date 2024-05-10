@@ -1,0 +1,300 @@
+---
+title: "Data"
+author: "Gop Arop"
+format: 
+  html:
+    embed-resources: true
+    warning: false
+editor_options: 
+  chunk_output_type: console
+---
+
+
+-   Question of interest: How prominent has the 3 point shot been in the last 24 years? Also, how has it effected the top 20 players in each season?
+
+
+```{r}
+library(hoopR)
+library(tidyverse)
+library(rvest)
+library(BasketballAnalyzeR)
+library(hrbrthemes)
+```
+
+
+## Shot Chart.
+
+```{r }
+shot_data <-  tibble(nba_shotchartdetail(league_id = '00', player_id = '2544', season ="2023-24"))
+
+data <- shot_data[[1]][[1]] |> 
+  mutate(LOC_X = as.numeric(LOC_X), LOC_Y = as.numeric(LOC_Y), xx = LOC_X/10, yy = LOC_Y/10 - 41.75) |> 
+  rename(shot_distance = SHOT_DISTANCE, original_x = LOC_X, original_y = LOC_Y, converted_y = yy, converted_x = xx) |>
+  mutate(shot_distance = as.numeric(shot_distance))
+
+table_data <- shot_data[[1]][[2]]
+```
+
+```{r}
+saveRDS(data, "shot_chart_data.rds")
+```
+
+```{r}
+## Static Plot for LeBron James - 2023-24 Season
+
+chart <- ggplot(data = data, aes(x = converted_x, y = converted_y, color = EVENT_TYPE)) + geom_point(alpha = 0.7, size = 2.5) + coord_fixed() + labs(title = glue("Shot Chart of Total Field Goals for {data$PLAYER_NAME}", )) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_rect(fill = "white"), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), plot.title = element_text(size = 10))
+
+chart
+drawNBAcourt(chart)
+```
+
+```{r}
+players <-  nba_leagueleaders(season = "2022-23", stat_category = "PTS", per_mode = "PerGame")
+
+players <- players[["LeagueLeaders"]] |>
+  mutate(PTS = as.numeric(PTS))
+
+players <- players |>
+  arrange(desc(PTS)) |>
+  slice(1:30)
+
+names(players)
+```
+
+
+
+## Season Average Attempts Plot
+
+```{r}
+seasons_choice <- paste0(substr(seq(2023, 1999), 1, 4), "-", substr(seq(2024, 2000), 3, 4)) |> as.factor()
+
+`2000's` <- paste0(substr(seq(2008, 1999), 1, 4), "-", substr(seq(2009, 2000), 3, 4))
+`2010's` <- paste0(substr(seq(2018, 2009), 1, 4), "-", substr(seq(2019, 2010), 3, 4))
+
+season_alt <- paste0(seq(2000,2024)) |>
+  as.factor()
+```
+
+```{r}
+season_avg <- players |> 
+  mutate(`FG3A` = as.numeric(FG3A)) |>
+  summarise(`Average 3 Point Per Game Attempt` = mean(FG3A))
+season_avg
+```
+
+```{r}
+top_scorers_df <- tibble(Player = character(),
+                            PTS = numeric(),
+                            Season = character(),
+                            stringsAsFactors = FALSE)
+
+for (season in seasons_choice) {
+  players <- nba_leagueleaders(season = season, 
+                                stat_category = "PTS", 
+                                per_mode = "PerGame")
+  
+  players <- players[["LeagueLeaders"]] |>
+    mutate(PTS = as.numeric(PTS))
+  
+  players <- players |>
+    arrange(desc(PTS)) |>
+    slice(1:30)
+  
+  top_scorers_df <- rbind(top_scorers_df, 
+                         transform(players, Season = season))
+}
+top_scorers_df <- top_scorers_df |>
+    mutate(`Season` = as.factor(`Season`),
+           `FG3A` = as.numeric(`FG3A`))
+```
+
+```{r}
+saveRDS(top_scorers_df, file = "scorers.rds")
+```
+
+```{r}
+top_scorers_plot <- top_scorers_df |>
+  mutate(DECADE = case_when(Season %in% `2000's` ~ "2000s",
+                            Season %in% `2010's` ~ "2010s",
+                            .default = "Early 2020s")) |>
+  group_by(Season, DECADE) |>
+  summarise(`Average 3 Point Attempt Per Game` = mean(`FG3A`)) |>
+  bind_cols(season_alt) |>
+  rename(`Season Alt` = `...4`) |>
+  rename(Year = `Season Alt`)
+
+timeplot <- ggplot(data = top_scorers_plot, aes(x = `Year`, y = `Average 3 Point Attempt Per Game`, group = DECADE, color = DECADE, label = `Year`)) + 
+  geom_point() + 
+  geom_line() + 
+  facet_grid(~DECADE, scales = "free_x") + 
+  theme_bw() +
+  theme(legend.position = "bottom",legend.title = element_blank(), legend.background = element_rect(fill = "white", color = "black"), axis.text.x = element_blank(), axis.ticks.x = element_blank()) + labs(x = "Season") +scale_color_viridis_d()
+
+ggplotly(timeplot, tooltip = "label")
+
+```
+
+
+
+## Quadrant Plot.
+
+```{r}
+library(plotly)
+library(glue)
+players <- players |> mutate(FG3A = as.numeric(FG3A), FGA = as.numeric(FGA))
+mean_y <- mean(players$FG3A)
+mean_x <- mean(players$FGA)
+
+quad_plot <- ggplot(players, aes(x=EFF, y=FG3A, label = PLAYER)) +
+  geom_point() + 
+  geom_image(aes(image = image), size = 0.09) +
+  theme_minimal() +
+  geom_vline(xintercept = mean_x) + geom_hline(yintercept = mean_y) 
+
+quad_plot
+
+ggplotly(quad_plot, tooltip = "label")
+```
+
+
+## Linear Model. 
+
+
+```{r}
+teams <- nba_teams()
+
+team_stats <- nba_leaguedashteamstats(league_id = "00", season = "2023-24", team_id = "1610612737")
+
+hawks_stats <- team_stats[[1]]
+```
+
+```{r}
+team_ids <- teams |>
+  distinct(team_id) |>
+  pull(team_id)
+
+```
+
+
+## Linear Model
+
+
+```{r}
+team_totals <- tibble()
+
+for (year in 2000:2010) {
+  Sys.sleep(4)
+  
+  teamStats_url <- sprintf("https://www.basketball-reference.com/leagues/NBA_%s.html", year)
+  
+  team_stats <- read_html(teamStats_url) |> 
+    html_nodes("table") |>
+    html_table() 
+  
+  team_stats_current <- team_stats[[6]]
+  
+  team_stats_current$SEASON <- year
+  
+  team_totals <- bind_rows(team_totals, team_stats_current) 
+}
+
+for (year in 2011:2015) {
+  Sys.sleep(4)
+  
+  teamStats_url <- sprintf("https://www.basketball-reference.com/leagues/NBA_%s.html", year)
+  
+  team_stats <- read_html(teamStats_url) |> 
+    html_nodes("table") |>
+    html_table() 
+  
+  team_stats_current <- team_stats[[6]]
+  
+  team_stats_current$SEASON <- year
+  
+  team_totals <- bind_rows(team_totals, team_stats_current) 
+}
+
+for (year in 2016:2024) {
+  Sys.sleep(4)
+  
+  teamStats_url <- sprintf("https://www.basketball-reference.com/leagues/NBA_%s.html", year)
+  
+  team_stats <- read_html(teamStats_url) |> 
+    html_nodes("table") |>
+    html_table() 
+  
+  team_stats_current <- team_stats[[8]]
+  
+  team_stats_current$SEASON <- year
+  
+  team_totals <- bind_rows(team_totals, team_stats_current) 
+}
+
+
+```
+
+```{r}
+team_totals <- team_totals |>
+  mutate(SEASON = as.factor(SEASON)) |>
+  filter(Team != "League Average")
+```
+
+```{r}
+library(broom)
+threepoint_mod <- lm(`3PA` ~ SEASON, data = team_totals)
+threepoint_mod <- threepoint_mod |> tidy()
+
+saveRDS(threepoint_mod, file = "my.data.rds")
+```
+
+```{r}
+team_mod <- team_totals |>
+  mutate(DECADE = case_when(SEASON %in%
+              c("2000","2001","2002","2003","2004","2005","2006","2007","2008","2009") ~ "2000s",
+                            SEASON %in%
+              c("2010","2011","2012","2013","2014","2015","2016","2017","2018","2019") ~ "2010s",
+                            .default = "Early 2020s")) |>
+  group_by(SEASON, DECADE) |>
+  summarise(`3PA` = mean(`3PA`))
+
+attempts_graph <- ggplot(data = team_mod, aes(x = SEASON, y = `3PA`, group = DECADE)) + geom_point() + geom_line() + facet_grid(~DECADE, scales = "free_x") + theme_light()
+
+ggplotly(attempts_graph, tooltip = "3PA")
+```
+
+```{r}
+variables <- data |>
+  select(`PLAYER_NAME`, `EVENT_TYPE`, `PLAYER_ID`, `SHOT_TYPE`)
+  
+variables2 <- players |>
+  select(`PTS`, `EFF`, `FG3M`, `FG3A`, `FG3_PCT`)
+
+variables3 <- top_scorers_df |>
+  select(`Season`)
+
+
+vars <- bind_rows(variables,variables2,variables3)
+
+
+
+vars <- as.tibble(names(vars)) |> rename(Variables = value)
+
+saveRDS(vars, file = "variables.rds")
+```
+
+```{r}
+totals <- nba_leagueleaders(season = "2023-24", stat_category = "PTS", per_mode = "Totals")
+
+totals <- totals[["LeagueLeaders"]] |>
+  mutate(`FGA` = as.numeric(`FGA`), `FG3A` = as.numeric(`FG3A`)) |>
+  filter(!is.na(`FGA`), !is.na(`FG3A`))
+
+totals2 <- totals |>
+  mutate(`FG2A` = as.numeric(`FGA`) - as.numeric(`FG3A`)) |>
+  filter(!is.na(`FG2A`)) |>
+  slice(1:100) |>
+  summarise(`Proportion of Makes 2s\n for Season` = mean(`FG2A` / `FGA`),
+            `Proportion of Makes 3s\n for Season` = mean(`FG3A` / `FGA`))
+
+```
+
